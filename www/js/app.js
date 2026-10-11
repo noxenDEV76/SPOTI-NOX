@@ -2,7 +2,8 @@
 import * as api from './api.js';
 import { store } from './store.js';
 import { Player } from './player.js';
-import { BANDS } from './analyzer.js';
+import { BANDS, EQ_PRESETS } from './analyzer.js';
+import { initLang, tr, locale, LANGS } from './i18n.js';
 import { icon } from './icons.js';
 import { recordListen, refreshRecs, scheduleRecs, seedArtist, REFRESH_MS } from './recs.js';
 import { importFiles } from './importer.js';
@@ -12,8 +13,8 @@ const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const fmtT = (s) => { if (!Number.isFinite(s)) return '0:00'; s = Math.round(s); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
-const fmtN = (n) => (n == null || Number.isNaN(n) ? '—' : new Intl.NumberFormat('fr-FR', { notation: 'compact', maximumFractionDigits: 1 }).format(n));
-const fmtFull = (n) => new Intl.NumberFormat('fr-FR').format(n);
+const fmtN = (n) => (n == null || Number.isNaN(n) ? '—' : new Intl.NumberFormat(locale(), { notation: 'compact', maximumFractionDigits: 1 }).format(n));
+const fmtFull = (n) => new Intl.NumberFormat(locale()).format(n);
 const bg = (u) => (u ? `background-image:url(&quot;${esc(u)}&quot;)` : '');
 const isNative = () => !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
@@ -62,6 +63,7 @@ function regList(tracks) {
 
 // ---------- lecteur ----------
 const player = new Player($('#audio-a'), $('#audio-p'), $('#yt-box .yt-slot'));
+player.analyzer.setEQ(store.s.settings.eq);
 window.__nox = { player, store, api }; // pratique pour le debug
 
 // ---------- modales ----------
@@ -138,6 +140,7 @@ function openQueue() {
 
 function openSettings() {
   const s = store.s.settings;
+  const eq = Object.assign({ on: true, preset: 'bounce', bass: 4.5, mud: -3.5, bright: 4 }, s.eq || {});
   const m = openModal(`<h2>Réglages</h2>
     <label>Clé Last.fm (facultative)</label>
     <input type="password" id="set-lfm" value="${esc(s.lastfm)}" placeholder="Pour afficher auditeurs et écoutes des artistes">
@@ -146,6 +149,22 @@ function openSettings() {
     <label>Clé API YouTube (facultative, titres complets)</label>
     <input type="password" id="set-yt" value="${esc(s.ytKey)}" placeholder="Clé YouTube Data API v3 (gratuite)">
     <label class="chk"><input type="checkbox" id="set-ytauto" ${s.ytAuto !== false ? 'checked' : ''}> Jouer automatiquement la version YouTube quand je n'ai qu'un extrait de 30 s</label>
+    <label>Langue</label>
+    <select id="set-lang"><option value="auto" ${!s.lang || s.lang === 'auto' ? 'selected' : ''}>Automatique (langue de l'appareil)</option>${Object.entries(LANGS).map(([c, l]) => `<option value="${c}" ${s.lang === c ? 'selected' : ''}>${l.name}</option>`).join('')}</select>
+    <label>Son : égaliseur</label>
+    <label class="chk"><input type="checkbox" id="eq-on" ${eq.on !== false ? 'checked' : ''}> Activer l'égaliseur</label>
+    <label>Préréglage</label>
+    <select id="eq-preset">
+      <option value="bounce" ${eq.preset === 'bounce' ? 'selected' : ''}>Équilibré · lows bouncy + brillance</option>
+      <option value="flat" ${eq.preset === 'flat' ? 'selected' : ''}>Neutre (sans traitement)</option>
+      <option value="bass" ${eq.preset === 'bass' ? 'selected' : ''}>Bass boost</option>
+      <option value="bright" ${eq.preset === 'bright' ? 'selected' : ''}>Brillant</option>
+      <option value="custom" ${eq.preset === 'custom' ? 'selected' : ''}>Personnalisé</option>
+    </select>
+    <label>Graves (Low) <b id="eq-bass-v"></b></label><input type="range" id="eq-bass" min="-8" max="10" step="0.5" value="${eq.bass}">
+    <label>Nettoyage des bas-médiums (≈ 320 Hz) <b id="eq-mud-v"></b></label><input type="range" id="eq-mud" min="-10" max="3" step="0.5" value="${eq.mud}">
+    <label>Brillance (aigus) <b id="eq-bright-v"></b></label><input type="range" id="eq-bright" min="-6" max="10" step="0.5" value="${eq.bright}">
+    <p>S'applique aux titres passant par l'analyse (PC : tout sauf YouTube ; Android : Audius et Jamendo). Un limiteur évite la saturation. Le niveau mesuré à droite est celui que tu entends.</p>
     <label class="chk"><input type="checkbox" id="set-reset" ${s.resetOnTrack ? 'checked' : ''}> Remettre le loudness à zéro à chaque nouveau titre</label>
     <label>Mes artistes préférés (séparés par des virgules)</label>
     <textarea id="set-fav" rows="3" placeholder="PhatCap!, Wiz Khalifa, Skrillex…"></textarea>
@@ -158,17 +177,33 @@ function openSettings() {
     </div>
     <div class="btns2"><button class="btn" data-x="no">Annuler</button><button class="btn pri" data-x="save">Enregistrer</button></div>
     <input type="file" id="imp-file" accept="application/json" class="hidden">`);
+  // egaliseur : applique en direct, sans attendre « Enregistrer »
+  const eqNow = () => ({ on: $('#eq-on', m).checked, preset: $('#eq-preset', m).value, bass: Number($('#eq-bass', m).value), mud: Number($('#eq-mud', m).value), bright: Number($('#eq-bright', m).value) });
+  const eqShow = () => ['bass', 'mud', 'bright'].forEach((k) => { const r = $('#eq-' + k, m); const v = Number(r.value); $('#eq-' + k + '-v', m).textContent = (v > 0 ? '+' : '') + v + ' dB'; r.style.setProperty('--p', ((v - r.min) / (r.max - r.min) * 100) + '%'); });
+  const eqApply = () => { s.eq = eqNow(); player.analyzer.setEQ(s.eq); store.save(); eqShow(); };
+  eqShow();
+  $('#eq-on', m).onchange = eqApply;
+  $('#eq-preset', m).onchange = () => {
+    const p = EQ_PRESETS[$('#eq-preset', m).value];
+    if (p) { $('#eq-bass', m).value = p.bass; $('#eq-mud', m).value = p.mud; $('#eq-bright', m).value = p.bright; }
+    eqApply();
+  };
+  ['bass', 'mud', 'bright'].forEach((k) => { $('#eq-' + k, m).oninput = () => { $('#eq-preset', m).value = 'custom'; eqApply(); }; });
   m.onclick = async (e) => {
     const x = e.target.closest('[data-x]');
     if (!x) return;
     const k = x.dataset.x;
     if (k === 'save') {
+      const newLang = $('#set-lang', m).value;
+      const langChanged = (s.lang || 'auto') !== newLang;
+      s.lang = newLang;
       s.lastfm = $('#set-lfm', m).value.trim();
       s.jamendo = $('#set-jm', m).value.trim();
       s.ytKey = $('#set-yt', m).value.trim();
       s.ytAuto = $('#set-ytauto', m).checked;
       s.resetOnTrack = $('#set-reset', m).checked;
       store.save(); closeModal(); toast('Réglages enregistrés');
+      if (langChanged) setTimeout(() => location.reload(), 400);
     } else if (k === 'export') {
       const blob = new Blob([store.exportAll()], { type: 'application/json' });
       const a = document.createElement('a');
@@ -194,7 +229,7 @@ function openSettings() {
       if (cur.name === 'home' || cur.name === 'recs') render();
     } else if (k === 'import') $('#imp-file', m).click();
     else if (k === 'wipe') {
-      if (confirm('Effacer playlists, favoris, historique et recommandations ?')) { store.wipe(); closeModal(); go('home', null, false); toast('Données effacées'); }
+      if (confirm(tr('Effacer playlists, favoris, historique et recommandations ?'))) { store.wipe(); closeModal(); go('home', null, false); toast('Données effacées'); }
     } else closeModal();
   };
   $('#imp-file', m).onchange = async (e) => {
@@ -596,7 +631,7 @@ const ACTIONS = {
   rm(el) { const p = store.s.playlists.find((x) => x.id === el.dataset.pid); if (!p) return; p.tracks = p.tracks.filter((t) => t.id !== el.dataset.id); store.save(); render(); },
   async 'new-pl'() { const n = await askText('Nouvelle playlist', '', 'Créer'); if (n !== null) { const p = store.createPlaylist(n); go('playlist', p.id); } },
   async 'rename-pl'(el) { const p = store.s.playlists.find((x) => x.id === el.dataset.pid); if (!p) return; const n = await askText('Renommer la playlist', p.name, 'Renommer'); if (n && n.trim()) { p.name = n.trim(); store.save(); render(); } },
-  'delete-pl'(el) { const p = store.s.playlists.find((x) => x.id === el.dataset.pid); if (p && confirm(`Supprimer « ${p.name} » ?`)) { store.s.playlists = store.s.playlists.filter((x) => x.id !== p.id); store.save(); go('library', null, false); } },
+  'delete-pl'(el) { const p = store.s.playlists.find((x) => x.id === el.dataset.pid); if (p && confirm(tr(`Supprimer « ${p.name} » ?`))) { store.s.playlists = store.s.playlists.filter((x) => x.id !== p.id); store.save(); go('library', null, false); } },
   'import-sp'() { openSpotifyImport(); },
   retry() { render(true); },
   async 'refresh-recs'() { toast('Calcul de tes recommandations…'); try { await refreshRecs(); toast('Recommandations actualisées'); } catch (e) { toast('Échec : réessaie dans un instant'); } render(); }
@@ -848,6 +883,7 @@ function loop(ts) {
 requestAnimationFrame(loop);
 
 // ---------- demarrage ----------
+initLang();
 hydrateIcons();
 renderSidebarPlaylists();
 store.on(renderSidebarPlaylists);

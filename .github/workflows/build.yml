@@ -44,6 +44,14 @@ jobs:
           java-version: 21
       - run: npm install
       - run: npx cap add android
+      - name: Icones SPOTI NOX
+        run: |
+          for d in android-icons/mipmap-*; do cp "$d"/*.png "android/app/src/main/res/$(basename $d)/"; done
+          printf '<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <color name="ic_launcher_background">#1FD45F</color>\n</resources>\n' > android/app/src/main/res/values/ic_launcher_background.xml
+          mkdir -p android/app/src/main/res/mipmap-anydpi-v26
+          for n in ic_launcher ic_launcher_round; do
+            printf '<?xml version="1.0" encoding="utf-8"?>\n<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">\n    <background android:drawable="@color/ic_launcher_background"/>\n    <foreground android:drawable="@mipmap/ic_launcher_foreground"/>\n</adaptive-icon>\n' > android/app/src/main/res/mipmap-anydpi-v26/$n.xml
+          done
       - run: npx cap sync android
       - name: Build APK
         working-directory: android

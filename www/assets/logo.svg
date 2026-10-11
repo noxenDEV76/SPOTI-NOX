@@ -5,10 +5,10 @@
       <stop offset="1" stop-color="#17a84b"/>
     </linearGradient>
   </defs>
-  <rect width="64" height="64" rx="16" fill="#000000"/>
-  <circle cx="32" cy="32" r="24" fill="url(#g)"/>
-  <path d="M39 15.5A17.5 17.5 0 1 0 48.5 40 14 14 0 0 1 39 15.5z" fill="#000000"/>
-  <rect x="33" y="27" width="3.2" height="10" rx="1.6" fill="#fff"/>
-  <rect x="38.6" y="22" width="3.2" height="20" rx="1.6" fill="#fff"/>
-  <rect x="44.2" y="29" width="3.2" height="6" rx="1.6" fill="#fff"/>
+  <rect width="64" height="64" rx="14" fill="url(#g)"/>
+  <g fill="#000">
+    <ellipse cx="26" cy="44" rx="8.4" ry="6.2" transform="rotate(-22 26 44)"/>
+    <rect x="31.6" y="14" width="3.8" height="31.5" rx="1.2"/>
+    <path d="M35.4 14C38.5 20 47 22 46.5 31.5C45 27 40.5 25.5 35.4 25Z"/>
+  </g>
 </svg>

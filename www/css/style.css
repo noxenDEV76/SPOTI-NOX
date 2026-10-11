@@ -327,3 +327,9 @@ body { font-size: 15px; }
   #yt-box { left: 8px; right: 8px; width: auto; bottom: calc(var(--player-h) + var(--mnav-h) + 8px); }
   #yt-box .yt-slot, #yt-box iframe { min-height: 200px; }
 }
+
+/* ---------- reglages : langue + egaliseur ---------- */
+.dlg select { width: 100%; padding: 11px 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--s1); color: var(--tx); outline: 0; margin: 4px 0 12px; }
+.dlg select:focus { border-color: var(--ac); }
+.dlg input[type=range] { width: 100%; display: block; margin: 8px 0 14px; flex: none; }
+.dlg label b { color: var(--ac2); margin-left: 6px; text-transform: none; letter-spacing: 0; }

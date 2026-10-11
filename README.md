@@ -37,6 +37,12 @@ Pour les artistes connus (Deezer = 30 s), SPOTI NOX peut jouer la version compl�
 
 À savoir : le lecteur reste **visible et non modifié** (règle de YouTube : pas de vidéo masquée ni floutée), **des pubs peuvent s'afficher** (SPOTI NOX ne les bloque pas), et le loudness / True Peak / analyseur de fréquences ne fonctionnent pas dans ce mode (YouTube ne donne pas accès au signal). Environ 100 titres différents par jour avec le quota gratuit ; les vidéos trouvées sont mémorisées. Sans clé, le bouton globe ouvre la recherche YouTube dans ton navigateur. Si YouTube échoue, l'app retombe sur l'extrait de 30 s.
 
+## Son, égaliseur et langue
+
+- **Réglages → Son : égaliseur** : préréglage « Équilibré » par défaut (graves pleins et rebondissants, bas-médiums ≈ 320 Hz dégagés contre l'effet « muddy », aigus brillants) + Neutre, Bass boost, Brillant, ou curseurs perso. Un limiteur évite la saturation, et le loudness / True Peak affichés sont ceux que tu entends. L'égaliseur agit sur les titres qui passent par l'analyse (PC : tout sauf YouTube ; Android : Audius et Jamendo).
+- **Réglages → Langue** : automatique, Français ou English (l'app se recharge).
+- Les icônes viennent de `scripts/make-icons.py` (`python3 scripts/make-icons.py` pour les régénérer).
+
 ## Obtenir le .exe et l'APK (sans rien installer)
 
 1. Crée un dépôt sur GitHub, puis dans ce dossier :

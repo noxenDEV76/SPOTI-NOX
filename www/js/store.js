@@ -7,7 +7,7 @@ const defaults = () => ({
   history: [],              // [{ t: track, at: timestamp }]
   profile: { artists: {}, genres: {} },
   recs: { items: [], ts: 0, because: [] },
-  settings: { lastfm: '', jamendo: '', volume: 0.85, resetOnTrack: true, ytKey: '', ytAuto: true },
+  settings: { lastfm: '', jamendo: '', volume: 0.85, resetOnTrack: true, ytKey: '', ytAuto: true, lang: 'auto', eq: { on: true, preset: 'bounce', bass: 4.5, mud: -3.5, bright: 4 } },
   ytCache: {}               // "artiste|titre" -> id de video YouTube
 });
 
