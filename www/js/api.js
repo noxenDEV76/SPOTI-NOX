@@ -107,6 +107,20 @@ export async function dzArtistByName(name) {
   const a = list.find((x) => norm(x.name) === norm(name)) || list[0];
   return a ? { id: 'dz:' + a.id, src: 'deezer', name: a.name, pic: a.picture_medium || a.picture, fans: a.nb_fan } : null;
 }
+// Retrouve un artiste par son nom exact : Deezer d'abord, puis Audius
+export async function findArtist(name) {
+  try {
+    const a = await dzArtistByName(name);
+    if (a && norm(a.name) === norm(name)) return a;
+  } catch (e) { /* on tente Audius */ }
+  try {
+    const d = await j(`${AU}/users/search?query=${encodeURIComponent(name)}&limit=5&app_name=${APP_NAME}`, 24 * 3600 * 1000);
+    const u = (d.data || []).find((x) => norm(x.name) === norm(name));
+    if (u) return { id: 'au:' + u.id, src: 'audius', name: u.name, pic: auImg(u.profile_picture), fans: u.follower_count };
+  } catch (e) { /* introuvable */ }
+  return null;
+}
+
 export async function electroArtists(n = 12) {
   const r = await Promise.allSettled(ELECTRO_ARTISTS.slice(0, n).map(dzArtistByName));
   const seen = new Set();

@@ -311,3 +311,7 @@ body { font-size: 15px; }
   .fab { width: 44px; height: 44px; }
   .play { width: 50px; height: 50px; }
 }
+
+.dlg textarea { width: 100%; padding: 11px 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--s1); color: var(--tx); outline: 0; margin: 4px 0 10px; font: inherit; resize: vertical; }
+.dlg textarea:focus { border-color: var(--ac); }
+.dlg input[type=file] { color: var(--mu); margin: 6px 0; max-width: 100%; }

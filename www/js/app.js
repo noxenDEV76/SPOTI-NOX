@@ -144,6 +144,9 @@ function openSettings() {
     <label>Client ID Jamendo (facultatif)</label>
     <input type="password" id="set-jm" value="${esc(s.jamendo)}" placeholder="Ajoute les titres complets Jamendo à la recherche">
     <label class="chk"><input type="checkbox" id="set-reset" ${s.resetOnTrack ? 'checked' : ''}> Remettre le loudness à zéro à chaque nouveau titre</label>
+    <label>Mes artistes préférés (séparés par des virgules)</label>
+    <textarea id="set-fav" rows="3" placeholder="PhatCap!, Wiz Khalifa, Skrillex…"></textarea>
+    <div class="btns2" style="margin:0 0 10px"><button class="btn" data-x="seed">Appliquer à « Pour toi »</button></div>
     <p>Les clés Last.fm et Jamendo sont gratuites (last.fm/api, devportal.jamendo.com) et restent sur cet appareil.</p>
     <div class="btns2">
       <button class="btn" data-x="export">Exporter mes playlists</button>
@@ -166,6 +169,24 @@ function openSettings() {
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob); a.download = 'spoti-nox-sauvegarde.json';
       document.body.appendChild(a); a.click(); a.remove();
+    } else if (k === 'seed') {
+      const names = $('#set-fav', m).value.split(/[,;\n]+/).map((x) => x.trim()).filter(Boolean).slice(0, 40);
+      if (!names.length) { toast('Écris au moins un artiste'); return; }
+      toast('Recherche de tes artistes…');
+      const res = await Promise.allSettled(names.map((n) => api.findArtist(n)));
+      const found = res.map((r, i) => (r.status === 'fulfilled' && r.value ? r.value : null));
+      found.forEach((f) => {
+        if (!f) return;
+        const cur = store.s.profile.artists[f.id] || { id: f.id, name: f.name, src: f.src, w: 0 };
+        cur.w = Math.max(cur.w, 4);
+        store.s.profile.artists[f.id] = cur;
+      });
+      store.save();
+      const missing = names.filter((n, i) => !found[i]);
+      try { await refreshRecs(); } catch (err) { /* ignore */ }
+      closeModal();
+      toast(`${found.filter(Boolean).length} artiste(s) pris en compte${missing.length ? ' · introuvable : ' + missing.slice(0, 3).join(', ') : ''}`);
+      if (cur.name === 'home' || cur.name === 'recs') render();
     } else if (k === 'import') $('#imp-file', m).click();
     else if (k === 'wipe') {
       if (confirm('Effacer playlists, favoris, historique et recommandations ?')) { store.wipe(); closeModal(); go('home', null, false); toast('Données effacées'); }
