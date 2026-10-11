@@ -43,8 +43,11 @@
     },
     "nsis": {
       "oneClick": false,
-      "allowToChangeInstallationDirectory": true
+      "allowToChangeInstallationDirectory": true,
+      "artifactName": "SPOTI-NOX-Setup-${version}.${ext}"
     },
-    "artifactName": "SPOTI-NOX-${version}-${target}.${ext}"
+    "portable": {
+      "artifactName": "SPOTI-NOX-Portable-${version}.${ext}"
+    }
   }
 }
