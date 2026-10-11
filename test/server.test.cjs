@@ -1,0 +1,20 @@
+const path = require('path');
+const http = require('http');
+const { start } = require('../electron/server');
+const get = (u) => new Promise((r) => http.get(u, (res) => { let b = ''; res.on('data', (d) => b += d); res.on('end', () => r({ s: res.statusCode, t: res.headers['content-type'], b })); }));
+let failed = 0;
+const check = (n, c) => { if (!c) failed++; console.log(`${c ? 'OK  ' : 'FAIL'} ${n}`); };
+(async () => {
+  const s = await start(path.join(__dirname, '..', 'www'), 47931);
+  const a = await get(s.url);
+  check('index servi', a.s === 200 && /html/.test(a.t) && a.b.includes('SPOTI'));
+  const j = await get(s.url + 'js/app.js');
+  check('module js', j.s === 200 && /javascript/.test(j.t));
+  check('404', (await get(s.url + 'nope.js')).s === 404);
+  const t = await new Promise((r) => { const q = http.request({ host: '127.0.0.1', port: s.port, path: '/../package.json', method: 'GET' }, (res) => r(res.statusCode)); q.end(); });
+  check('traversal bloque', t === 403 || t === 404);
+  const s2 = await start(path.join(__dirname, '..', 'www'), 47931);
+  check('port occupe -> repli', s2.port === 47932);
+  s.server.close(); s2.server.close();
+  process.exit(failed ? 1 : 0);
+})();

@@ -61,7 +61,7 @@ function regList(tracks) {
 }
 
 // ---------- lecteur ----------
-const player = new Player($('#audio-a'), $('#audio-p'));
+const player = new Player($('#audio-a'), $('#audio-p'), $('#yt-box .yt-slot'));
 window.__nox = { player, store, api }; // pratique pour le debug
 
 // ---------- modales ----------
@@ -143,11 +143,14 @@ function openSettings() {
     <input type="password" id="set-lfm" value="${esc(s.lastfm)}" placeholder="Pour afficher auditeurs et écoutes des artistes">
     <label>Client ID Jamendo (facultatif)</label>
     <input type="password" id="set-jm" value="${esc(s.jamendo)}" placeholder="Ajoute les titres complets Jamendo à la recherche">
+    <label>Clé API YouTube (facultative, titres complets)</label>
+    <input type="password" id="set-yt" value="${esc(s.ytKey)}" placeholder="Clé YouTube Data API v3 (gratuite)">
+    <label class="chk"><input type="checkbox" id="set-ytauto" ${s.ytAuto !== false ? 'checked' : ''}> Jouer automatiquement la version YouTube quand je n'ai qu'un extrait de 30 s</label>
     <label class="chk"><input type="checkbox" id="set-reset" ${s.resetOnTrack ? 'checked' : ''}> Remettre le loudness à zéro à chaque nouveau titre</label>
     <label>Mes artistes préférés (séparés par des virgules)</label>
     <textarea id="set-fav" rows="3" placeholder="PhatCap!, Wiz Khalifa, Skrillex…"></textarea>
     <div class="btns2" style="margin:0 0 10px"><button class="btn" data-x="seed">Appliquer à « Pour toi »</button></div>
-    <p>Les clés Last.fm et Jamendo sont gratuites (last.fm/api, devportal.jamendo.com) et restent sur cet appareil.</p>
+    <p>Les clés Last.fm, Jamendo et YouTube sont gratuites (last.fm/api, devportal.jamendo.com, console.cloud.google.com → « YouTube Data API v3 ») et restent sur cet appareil. Avec YouTube, le lecteur officiel s'affiche en entier, avec ses éventuelles pubs ; environ 100 titres différents par jour (les résultats sont mémorisés).</p>
     <div class="btns2">
       <button class="btn" data-x="export">Exporter mes playlists</button>
       <button class="btn" data-x="import">Importer</button>
@@ -162,6 +165,8 @@ function openSettings() {
     if (k === 'save') {
       s.lastfm = $('#set-lfm', m).value.trim();
       s.jamendo = $('#set-jm', m).value.trim();
+      s.ytKey = $('#set-yt', m).value.trim();
+      s.ytAuto = $('#set-ytauto', m).checked;
       s.resetOnTrack = $('#set-reset', m).checked;
       store.save(); closeModal(); toast('Réglages enregistrés');
     } else if (k === 'export') {
@@ -528,9 +533,14 @@ function renderSidebarPlaylists() {
 }
 
 // ---------- actions (clics) ----------
-// Ouvre la recherche YouTube dans le navigateur de l'appareil : le titre complet s'ecoute la-bas,
-// avec ce que tu y as (abonnement, extensions de ton navigateur...). Rien n'est modifie dans YouTube.
+// Avec une cle YouTube : lecteur officiel integre (visible). Sans cle : recherche ouverte dans le navigateur.
 function openYouTube(t) {
+  if (player.ytReady) {
+    reg(t);
+    if (player.current && player.current.id === t.id) player.load(t, false, false, true);
+    else { player.forceYT = true; player.playList([t], 0); }
+    return;
+  }
   const q = encodeURIComponent(`${t.artist} ${t.title}`);
   window.open(`https://www.youtube.com/results?search_query=${q}`, '_blank');
 }
@@ -677,6 +687,8 @@ player.on('mode', () => {
 player.on('listen', (t) => { recordListen(t); });
 player.on('error', (t) => toast(`Impossible de lire « ${t.title} »`));
 player.on('analysis', (active) => updateAnalysisNote(active));
+player.on('yt', (on) => { $('#yt-box').classList.toggle('hidden', !on); document.body.classList.toggle('yt-on', !!on); });
+player.on('ytfail', (why) => toast(why === 'quota' ? 'Clé YouTube refusée ou quota du jour atteint : extrait de 30 s' : why === 'embed' ? 'Cette vidéo ne peut pas être lue ici : extrait de 30 s' : 'YouTube indisponible pour ce titre : extrait de 30 s'));
 
 ui.play.addEventListener('click', () => player.toggle());
 $('#b-next').addEventListener('click', () => player.next());
@@ -726,7 +738,8 @@ function updateAnalysisNote(active) {
   const note = $('#an-note');
   const t = player.current;
   if (!t) { note.textContent = ''; return; }
-  if (!active) note.textContent = 'Analyse indisponible pour ce titre : la source ne donne pas accès au signal audio.';
+  if (player.el === player.ytEl) note.textContent = 'Lecture via le lecteur YouTube : loudness, True Peak et fréquences indisponibles (YouTube ne donne pas accès au signal audio).';
+  else if (!active) note.textContent = 'Analyse indisponible pour ce titre : la source ne donne pas accès au signal audio.';
   else if (player.analyzer.error) note.textContent = 'La mesure du loudness n\'est pas disponible sur cet appareil.';
   else if (!t.full) note.textContent = 'Extrait de 30 s : les mesures portent uniquement sur l\'extrait.';
   else note.textContent = '';

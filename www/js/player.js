@@ -2,6 +2,7 @@
 import * as api from './api.js';
 import { store } from './store.js';
 import { Analyzer } from './analyzer.js';
+import { YTEngine, findVideo, YTQuotaError } from './yt.js';
 
 const isNative = () => !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
 
@@ -15,7 +16,7 @@ function shuffleArr(a) {
 
 export class Player {
   // elA : <audio crossorigin> branche sur l'analyseur ; elP : <audio> simple (sources sans CORS)
-  constructor(elA, elP) {
+  constructor(elA, elP, ytSlot = null) {
     this.elA = elA;
     this.elP = elP;
     this.el = elA;
@@ -31,6 +32,27 @@ export class Player {
     this.seq = 0;
     this.blob = null;
     this.h = {};
+    // Lecteur YouTube integre : expose la meme forme qu'un <audio> pour reutiliser toute la logique
+    this.yt = ytSlot ? new YTEngine(ytSlot) : null;
+    const self = this;
+    this.ytEl = {
+      get src() { return 'youtube'; },
+      get paused() { return self.yt.paused; },
+      get currentTime() { return self.yt.time; },
+      set currentTime(v) { self.yt.seek(v); },
+      get duration() { return self.yt.duration; },
+      play() { self.yt.play(); return Promise.resolve(); },
+      pause() { self.yt.pause(); },
+      getAttribute() { return null; }
+    };
+    if (this.yt) {
+      this.yt.onstate = (st) => {
+        if (this.el !== this.ytEl) return;
+        if (st === 0) this.onEnded(); else this.emit('state');
+      };
+      this.yt.ontime = () => { if (this.el === this.ytEl) this.onTime(); };
+      this.yt.onerror = () => { if (this.el === this.ytEl) this.onYTError(); };
+    }
     this.setVolume(store.s.settings.volume);
 
     [elA, elP].forEach((el) => {
@@ -57,6 +79,7 @@ export class Player {
     this.volume = v;
     this.elA.volume = v;
     this.elP.volume = v;
+    if (this.yt) this.yt.setVolume(v);
   }
 
   seek(t) { if (this.el.src) this.el.currentTime = t; }
@@ -158,20 +181,70 @@ export class Player {
     if (this.queue.length > 1) setTimeout(() => this.next(true), 1200);
   }
 
-  async load(track, isRetry = false, forcePlain = false) {
+  get ytReady() { return !!(this.yt && store.s.settings.ytKey); }
+
+  // Titre complet via YouTube pour les titres qui n'ont qu'un extrait de 30 s
+  async loadYT(track, seq) {
+    try {
+      const id = await findVideo(store.s.settings.ytKey, track);
+      if (seq !== this.seq) return true;
+      await this.yt.load(id);
+      if (seq !== this.seq) { this.yt.stop(); return true; }
+    } catch (e) {
+      if (seq !== this.seq) return true;
+      this.emit('ytfail', e instanceof YTQuotaError ? 'quota' : 'error');
+      return false;
+    }
+    this.elA.pause(); this.elA.removeAttribute('src'); this.elA.load();
+    this.elP.pause(); this.elP.removeAttribute('src'); this.elP.load();
+    if (this.blob) { URL.revokeObjectURL(this.blob); this.blob = null; }
+    this.el = this.ytEl;
+    this.analyzable = false;
+    this.analyzer.active = false;
+    this.emit('yt', true);
+    this.emit('analysis', false);
+    this.yt.play();
+    this.emit('state');
+    return true;
+  }
+
+  // Erreur du lecteur YouTube (video non integrable, supprimee...) : on retombe sur l'extrait
+  onYTError() {
+    const t = this.current;
+    if (!t || this.ytFailed === t.id) return;
+    this.ytFailed = t.id;
+    this.emit('ytfail', 'embed');
+    this.load(t, true, false, false, true);
+  }
+
+  async load(track, isRetry = false, forcePlain = false, forceYT = false, skipYT = false) {
     const seq = ++this.seq;
-    if (!isRetry) { this.retriedDz = false; this.fellBack = false; }
+    forceYT = forceYT || this.forceYT;
+    this.forceYT = false;
+    if (!isRetry) { this.retriedDz = false; this.fellBack = false; this.ytFailed = null; }
     this.current = track;
     this.counted = false;
     this.emit('track', track);
 
+    let resolveErr = null;
     try {
       await api.resolve(track);
       if (!track.url) throw new Error('Aucune source audio');
-    } catch (e) {
+    } catch (e) { resolveErr = e; }
+    if (seq !== this.seq) return;
+
+    // YouTube : titres sans version complete (extrait 30 s, introuvables), ou demande explicite
+    const useYT = this.ytReady && !skipYT && !forcePlain
+      && (forceYT || ((store.s.settings.ytAuto !== false) && !(track.full && track.url)));
+    if (useYT) {
+      if (await this.loadYT(track, seq)) return;
+      if (seq !== this.seq) return;
+    }
+    if (resolveErr || !track.url) {
       this.emit('error', track);
       return;
     }
+    if (this.yt) { this.yt.stop(); this.emit('yt', false); }
 
     let el = this.elA;
     let src = track.url;

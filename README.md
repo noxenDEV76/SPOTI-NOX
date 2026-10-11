@@ -27,6 +27,16 @@ Ton lecteur de musique perso : sans compte, sans pub, pour **PC (Windows .exe)**
 
 Les catalogues de Spotify, YouTube Music, Apple Music ou Deezer (titres entiers) ne sont accessibles que via leurs propres apps : SPOTI NOX ne les contourne pas.
 
+### Titres complets avec YouTube (facultatif)
+
+Pour les artistes connus (Deezer = 30 s), SPOTI NOX peut jouer la version complète via le **lecteur officiel YouTube intégré** :
+
+1. Crée une clé gratuite *YouTube Data API v3* (console.cloud.google.com → API et services → Identifiants).
+2. Colle-la dans **Réglages → Clé API YouTube**.
+3. Les titres en extrait de 30 s basculent alors sur YouTube (désactivable dans les réglages), et le bouton globe force YouTube sur le titre en cours.
+
+À savoir : le lecteur reste **visible et non modifié** (règle de YouTube : pas de vidéo masquée ni floutée), **des pubs peuvent s'afficher** (SPOTI NOX ne les bloque pas), et le loudness / True Peak / analyseur de fréquences ne fonctionnent pas dans ce mode (YouTube ne donne pas accès au signal). Environ 100 titres différents par jour avec le quota gratuit ; les vidéos trouvées sont mémorisées. Sans clé, le bouton globe ouvre la recherche YouTube dans ton navigateur. Si YouTube échoue, l'app retombe sur l'extrait de 30 s.
+
 ## Obtenir le .exe et l'APK (sans rien installer)
 
 1. Crée un dépôt sur GitHub, puis dans ce dossier :
@@ -55,7 +65,7 @@ npm test         # vérifie le calcul LUFS / True Peak sur des signaux de réfé
 
 ## Limites à connaître
 
-- Les extraits Deezer durent 30 s : c'est le cas des artistes connus (Skrillex, etc.). Les titres entiers viennent d'Audius / Jamendo (artistes indépendants) ou de tes propres fichiers.
+- Les extraits Deezer durent 30 s (sauf avec la clé YouTube ci-dessus) : c'est le cas des artistes connus (Skrillex, etc.). Les titres entiers viennent d'Audius / Jamendo (artistes indépendants) ou de tes propres fichiers.
 - Sur Android, les extraits Deezer se lisent sans l'analyse live (le système bloque l'accès au signal) ; Audius et Jamendo sont analysés.
 - Sur Android, la lecture peut se couper quand l'écran est verrouillé ou l'app en arrière-plan.
 - Les recommandations se recalculent quand l'app est ouverte (toutes les 2 h, et au lancement si le dernier calcul a plus de 2 h).

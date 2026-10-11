@@ -7,7 +7,8 @@ const defaults = () => ({
   history: [],              // [{ t: track, at: timestamp }]
   profile: { artists: {}, genres: {} },
   recs: { items: [], ts: 0, because: [] },
-  settings: { lastfm: '', jamendo: '', volume: 0.85, resetOnTrack: true }
+  settings: { lastfm: '', jamendo: '', volume: 0.85, resetOnTrack: true, ytKey: '', ytAuto: true },
+  ytCache: {}               // "artiste|titre" -> id de video YouTube
 });
 
 let state = defaults();
@@ -67,7 +68,8 @@ export const store = {
     return true;
   },
   exportAll() {
-    return JSON.stringify({ playlists: state.playlists, likes: state.likes, settings: state.settings }, null, 2);
+    const { ytKey, ...settings } = state.settings;   // la cle YouTube n'est pas exportee
+    return JSON.stringify({ playlists: state.playlists, likes: state.likes, settings }, null, 2);
   },
   importAll(json) {
     const d = JSON.parse(json);
