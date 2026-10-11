@@ -57,14 +57,22 @@ jobs:
 
   release:
     name: Publier la release
-    if: startsWith(github.ref, 'refs/tags/')
     needs: [windows, android]
+    if: ${{ !cancelled() && (needs.windows.result == 'success' || needs.android.result == 'success') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
         with:
           path: out
           merge-multiple: true
-      - uses: softprops/action-gh-release@v2
-        with:
-          files: out/*
+      - name: Publier dans les Releases
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="$GITHUB_REF_NAME"
+          case "$GITHUB_REF" in refs/tags/*) ;; *) TAG=latest ;; esac
+          ls -la out
+          gh release delete "$TAG" --repo "$GITHUB_REPOSITORY" --cleanup-tag --yes || true
+          gh release create "$TAG" out/* --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+            --title "SPOTI NOX ($TAG)" \
+            --notes "Installateur et version portable Windows (.exe) + APK Android. Version construite automatiquement."
