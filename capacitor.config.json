@@ -1,0 +1,16 @@
+{
+  "appId": "com.spotinox.app",
+  "appName": "SPOTI NOX",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  },
+  "plugins": {
+    "CapacitorHttp": {
+      "enabled": true
+    }
+  },
+  "android": {
+    "backgroundColor": "#0a0a10"
+  }
+}

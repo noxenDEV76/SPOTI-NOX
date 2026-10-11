@@ -1,0 +1,50 @@
+{
+  "name": "spoti-nox",
+  "version": "1.0.0",
+  "description": "SPOTI NOX - lecteur musique perso, sans pub, avec loudness / True Peak et analyseur de frequences en direct",
+  "main": "electron/main.js",
+  "author": "SPOTI NOX",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "test": "node test/dsp.test.mjs",
+    "dist:win": "electron-builder --win --publish never",
+    "android:add": "cap add android",
+    "android:sync": "cap sync android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.0.0",
+    "@capacitor/cli": "^7.0.0",
+    "@capacitor/core": "^7.0.0"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.spotinox.app",
+    "productName": "SPOTI NOX",
+    "files": [
+      "electron/**/*",
+      "www/**/*",
+      "package.json"
+    ],
+    "directories": {
+      "buildResources": "build",
+      "output": "dist"
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "artifactName": "SPOTI-NOX-${version}-${target}.${ext}"
+  }
+}

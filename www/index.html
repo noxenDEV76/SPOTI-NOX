@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0a10">
+  <title>SPOTI NOX</title>
+  <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app">
+    <aside id="sidebar">
+      <div class="brand"><img src="assets/logo.svg" alt="" width="34" height="34"><span>SPOTI <b>NOX</b></span></div>
+      <nav id="nav">
+        <button data-nav="home" class="on"><span data-ic="home"></span>Accueil</button>
+        <button data-nav="search"><span data-ic="search"></span>Recherche</button>
+        <button data-nav="chart:france"><span data-ic="chart"></span>Top France</button>
+        <button data-nav="chart:global"><span data-ic="globe"></span>Top Global</button>
+        <button data-nav="chart:hits"><span data-ic="star"></span>Hits du moment</button>
+        <button data-nav="recs"><span data-ic="wave"></span>Pour toi</button>
+      </nav>
+      <div class="lib-head">
+        <button data-nav="library" class="libtitle"><span data-ic="library"></span>Bibliothèque</button>
+        <button id="new-pl" class="mini" title="Nouvelle playlist"><span data-ic="plus"></span></button>
+      </div>
+      <div id="pl-list"></div>
+      <div class="side-foot">
+        <button id="open-settings" class="ghost"><span data-ic="settings"></span>Réglages</button>
+        <small>Sans pub · Sans compte</small>
+      </div>
+    </aside>
+
+    <main id="main">
+      <header id="topbar">
+        <button id="back" class="round" title="Retour"><span data-ic="back"></span></button>
+        <form id="search-form" autocomplete="off">
+          <span data-ic="search"></span>
+          <input id="q" type="search" placeholder="Titre, artiste, album…" enterkeyhint="search">
+        </form>
+        <button id="toggle-panel" class="round only-mobile" title="Analyse &amp; artiste"><span data-ic="wave"></span></button>
+      </header>
+      <div id="view"></div>
+    </main>
+
+    <aside id="panel">
+      <div class="panel-head">
+        <div class="tabs">
+          <button data-tab="artist">Artiste</button>
+          <button data-tab="analysis" class="on">Analyse live</button>
+        </div>
+        <button id="close-panel" class="round only-mobile"><span data-ic="close"></span></button>
+      </div>
+
+      <section class="pane" data-pane="artist" id="pane-artist">
+        <p class="muted pad">Lance un titre pour voir les infos de l'artiste.</p>
+      </section>
+
+      <section class="pane on" data-pane="analysis" id="pane-analysis">
+        <div class="box">
+          <div class="box-h"><h3>Loudness</h3><button id="lu-reset" class="mini txt">Reset</button></div>
+          <div class="lu-grid">
+            <div><label>Momentané</label><b id="lu-m">−∞</b><small>LUFS</small></div>
+            <div><label>Court terme</label><b id="lu-s">−∞</b><small>LUFS</small></div>
+            <div class="hl"><label>Intégré</label><b id="lu-i">−∞</b><small>LUFS</small></div>
+          </div>
+          <div class="lbar" aria-hidden="true">
+            <i id="lbar-m"></i>
+            <span class="tick" style="left:72%"><em>−14</em></span>
+            <span class="tick" style="left:54%"><em>−23</em></span>
+          </div>
+          <div class="tp-row">
+            <div><label>True Peak</label><b id="tp-now">−∞</b><small>dBTP</small></div>
+            <div><label>Max</label><b id="tp-max">−∞</b><small>dBTP</small></div>
+            <div id="tp-flag" class="flag ok">OK</div>
+          </div>
+          <p class="hint">Repère streaming courant : ≈ −14 LUFS · crête ≤ −1 dBTP</p>
+        </div>
+
+        <div class="box">
+          <div class="box-h"><h3>Zones de fréquences</h3><span id="verdict" class="verdict">—</span></div>
+          <canvas id="spec" width="600" height="170"></canvas>
+          <div id="bands"></div>
+          <p class="hint">Écart par rapport à une courbe de référence (−4,5 dB/octave). Indicatif.</p>
+        </div>
+        <p id="an-note" class="hint pad"></p>
+      </section>
+    </aside>
+
+    <footer id="player">
+      <div class="np">
+        <div id="np-cover" class="np-cover"></div>
+        <div class="np-meta">
+          <b id="np-title">Rien en lecture</b>
+          <span id="np-artist">Choisis un son</span>
+        </div>
+        <button id="np-like" class="round ghost" title="J'aime"><span data-ic="heart"></span></button>
+      </div>
+
+      <div class="ctrl">
+        <div class="btns">
+          <button id="b-shuffle" class="round ghost" title="Aléatoire"><span data-ic="shuffle"></span></button>
+          <button id="b-prev" class="round ghost" title="Précédent"><span data-ic="prev" data-s="22"></span></button>
+          <button id="b-play" class="play" title="Lecture / pause"><span data-ic="play" data-s="26"></span></button>
+          <button id="b-next" class="round ghost" title="Suivant"><span data-ic="next" data-s="22"></span></button>
+          <button id="b-repeat" class="round ghost" title="Répéter"><span data-ic="repeat"></span></button>
+        </div>
+        <div class="seek">
+          <span id="t-cur">0:00</span>
+          <input id="seek" type="range" min="0" max="1000" value="0">
+          <span id="t-dur">0:00</span>
+        </div>
+      </div>
+
+      <div class="extra">
+        <button id="np-add" class="round ghost" title="Ajouter à une playlist"><span data-ic="plus"></span></button>
+        <button id="np-dl" class="round ghost" title="Télécharger"><span data-ic="download"></span></button>
+        <button id="b-queue" class="round ghost" title="File d'attente"><span data-ic="queue"></span></button>
+        <span class="volic" data-ic="vol"></span>
+        <input id="vol" type="range" min="0" max="100" value="85">
+      </div>
+    </footer>
+
+    <nav id="mnav">
+      <button data-nav="home"><span data-ic="home"></span>Accueil</button>
+      <button data-nav="search"><span data-ic="search"></span>Recherche</button>
+      <button data-nav="chart:france"><span data-ic="chart"></span>Tops</button>
+      <button data-nav="recs"><span data-ic="wave"></span>Pour toi</button>
+      <button data-nav="library"><span data-ic="library"></span>Biblio</button>
+    </nav>
+  </div>
+
+  <div id="modal" class="hidden"></div>
+  <div id="toast" class="hidden"></div>
+
+  <!-- lecteur analysé (CORS) + lecteur simple (secours) -->
+  <audio id="audio-a" crossorigin="anonymous" preload="auto"></audio>
+  <audio id="audio-p" preload="auto"></audio>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
