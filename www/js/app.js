@@ -239,6 +239,7 @@ function rowHTML(t, key, i, opts = {}) {
       <button class="mini ${liked ? 'liked-on' : ''}" data-act="like" data-id="${esc(t.id)}" title="J'aime">${icon(liked ? 'heartfill' : 'heart', 18)}</button>
       <button class="mini" data-act="addpl" data-id="${esc(t.id)}" title="Ajouter à une playlist">${icon('plus', 18)}</button>
       <button class="mini" data-act="queue" data-id="${esc(t.id)}" title="Ajouter à la file">${icon('queue', 18)}</button>
+      ${t.full ? '' : `<button class="mini" data-act="yt" data-id="${esc(t.id)}" title="Écouter en entier sur YouTube (ouvre ton navigateur)">${icon('globe', 18)}</button>`}
       ${t.dl ? `<button class="mini" data-act="dl" data-id="${esc(t.id)}" title="Télécharger">${icon('download', 18)}</button>` : ''}
       ${opts.pid ? `<button class="mini" data-act="rm" data-id="${esc(t.id)}" data-pid="${opts.pid}" title="Retirer">${icon('trash', 18)}</button>` : ''}
     </div></div>`;
@@ -527,6 +528,13 @@ function renderSidebarPlaylists() {
 }
 
 // ---------- actions (clics) ----------
+// Ouvre la recherche YouTube dans le navigateur de l'appareil : le titre complet s'ecoute la-bas,
+// avec ce que tu y as (abonnement, extensions de ton navigateur...). Rien n'est modifie dans YouTube.
+function openYouTube(t) {
+  const q = encodeURIComponent(`${t.artist} ${t.title}`);
+  window.open(`https://www.youtube.com/results?search_query=${q}`, '_blank');
+}
+
 async function download(t) {
   if (!t.dl) { toast('Téléchargement non autorisé pour ce titre'); return; }
   if (isNative()) { window.open(t.dl, '_blank'); return; }
@@ -573,6 +581,7 @@ const ACTIONS = {
   like(el) { const t = T.get(el.dataset.id); if (!t) return; const on = store.toggleLike(t); syncLikes(t.id); toast(on ? 'Ajouté à tes titres likés' : 'Retiré des titres likés'); },
   addpl(el) { const t = T.get(el.dataset.id); if (t) pickPlaylist(t); },
   queue(el) { const t = T.get(el.dataset.id); if (!t) return; if (!player.current) { player.playList([t], 0); return; } player.enqueue(t, true); toast('Ajouté à la file d\'attente'); },
+  yt(el) { const t = T.get(el.dataset.id); if (t) openYouTube(t); },
   dl(el) { const t = T.get(el.dataset.id); if (t) download(t); },
   rm(el) { const p = store.s.playlists.find((x) => x.id === el.dataset.pid); if (!p) return; p.tracks = p.tracks.filter((t) => t.id !== el.dataset.id); store.save(); render(); },
   async 'new-pl'() { const n = await askText('Nouvelle playlist', '', 'Créer'); if (n !== null) { const p = store.createPlaylist(n); go('playlist', p.id); } },
@@ -676,6 +685,7 @@ $('#b-shuffle').addEventListener('click', () => player.setShuffle(!player.shuffl
 $('#b-repeat').addEventListener('click', () => player.cycleRepeat());
 $('#b-queue').addEventListener('click', openQueue);
 $('#np-add').addEventListener('click', () => { if (player.current) pickPlaylist(player.current); });
+$('#np-yt').addEventListener('click', () => { if (player.current) openYouTube(player.current); });
 $('#np-dl').addEventListener('click', () => { if (player.current) download(player.current); });
 ui.like.addEventListener('click', () => { const t = player.current; if (!t) return; reg(t); const on = store.toggleLike(t); syncLikes(t.id); toast(on ? 'Ajouté à tes titres likés' : 'Retiré des titres likés'); });
 ui.seek.addEventListener('input', () => { seeking = true; setRange(ui.seek); });
