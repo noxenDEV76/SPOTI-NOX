@@ -7,6 +7,7 @@ Ton lecteur de musique perso : sans compte, sans pub, pour **PC (Windows .exe)**
 - **Lecteur complet** : recherche, lecture, file d'attente, aléatoire, répétition, volume, touches multimédia
 - **Playlists** (illimitées, lecture aléatoire possible), **titres likés**, historique, export/import de sauvegarde
 - **Classements** : Hits du moment, Top France, Top Global, tops par genre (Rap, Pop, Dance, Rock, R&B, Électro)
+- **Électro** : page dédiée avec les artistes connus (Skrillex, David Guetta, Daft Punk…) et des rangées de titres complets (Dubstep, House, Drum & Bass, Trap…)
 - **Pour toi** : recommandations calculées d'après ce que tu écoutes, **recalculées toutes les 2 h**
 - **Fiche artiste** : photo, pays, fans / abonnés, auditeurs et écoutes (Last.fm), liens réseaux sociaux
 - **Analyse en direct** pendant l'écoute, dans le panneau de droite :
@@ -53,7 +54,7 @@ npm test         # vérifie le calcul LUFS / True Peak sur des signaux de réfé
 
 ## Limites à connaître
 
-- Les extraits Deezer durent 30 s ; pour des titres entiers, utilise Audius / Jamendo.
+- Les extraits Deezer durent 30 s : c'est le cas des artistes connus (Skrillex, etc.). Les titres entiers viennent d'Audius / Jamendo (artistes indépendants) ou de tes propres fichiers.
 - Sur Android, les extraits Deezer se lisent sans l'analyse live (le système bloque l'accès au signal) ; Audius et Jamendo sont analysés.
 - Sur Android, la lecture peut se couper quand l'écran est verrouillé ou l'app en arrière-plan.
 - Les recommandations se recalculent quand l'app est ouverte (toutes les 2 h, et au lancement si le dernier calcul a plus de 2 h).

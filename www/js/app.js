@@ -158,7 +158,7 @@ const artistLink = (t) => (t.artistId ? `<a data-nav="artist:${esc(t.artistId)}"
 
 function cardHTML(t, key, i) {
   return `<div class="card" data-act="play" data-list="${key}" data-i="${i}" data-id="${esc(t.id)}">
-    <div class="cov" style="${bg(t.cover)}"><span class="fab">${icon('play', 20)}</span></div>
+    <div class="cov" style="${bg(t.cover)}"><span class="fab">${icon('play', 26)}</span></div>
     <b>${esc(t.title)}</b><span>${esc(t.artist)}</span></div>`;
 }
 
@@ -170,14 +170,20 @@ function artistCardHTML(a) {
 function shelf(title, tracks, { sub = '', more = '' } = {}) {
   if (!tracks || !tracks.length) return '';
   const key = regList(tracks);
-  return `<section class="shelf"><div class="shelf-h"><div><h2>${esc(title)}</h2>${sub ? `<small style="margin:0">${esc(sub)}</small>` : ''}</div>${more ? `<button class="link" data-nav="${more}">Tout afficher</button>` : ''}</div>
+  return `<section class="shelf"><div class="shelf-h"><div><h2>${esc(title)}</h2>${sub ? `<small style="margin:0">${esc(sub)}</small>` : ''}</div>${more ? `<button class="link" data-nav="${esc(more)}">Tout afficher</button>` : ''}</div>
     <div class="row">${tracks.slice(0, 20).map((t, i) => cardHTML(t, key, i)).join('')}</div></section>`;
+}
+
+function artistShelf(title, artists, { sub = '', more = '', wrap = false } = {}) {
+  if (!artists || !artists.length) return '';
+  return `<section class="shelf"><div class="shelf-h"><div><h2>${esc(title)}</h2>${sub ? `<small style="margin:0">${esc(sub)}</small>` : ''}</div>${more ? `<button class="link" data-nav="${esc(more)}">Tout afficher</button>` : ''}</div>
+    <div class="row" ${wrap ? 'style="flex-wrap:wrap;overflow:visible"' : ''}>${artists.map(artistCardHTML).join('')}</div></section>`;
 }
 
 function rowHTML(t, key, i, opts = {}) {
   const liked = store.isLiked(t.id);
   return `<div class="trow ${player.current && player.current.id === t.id ? 'cur' : ''}" data-act="play" data-list="${key}" data-i="${i}" data-id="${esc(t.id)}">
-    <div class="n">${i + 1}</div>
+    <div class="n"><span class="num">${i + 1}</span><span class="pl">${icon('play', 20)}</span></div>
     <div class="tc"><div class="th" style="${bg(t.cover)}"></div><div class="tt"><b>${esc(t.title)}</b><span>${artistLink(t)}</span></div></div>
     <span class="badge ${t.full ? 'full' : ''}">${t.full ? 'Titre complet' : 'Extrait 30 s'}</span>
     <div class="tm">${t.full ? fmtT(t.duration) : '0:30'}</div>
@@ -257,9 +263,10 @@ const VIEWS = {
   async home() {
     const h = new Date().getHours();
     const hello = h < 6 ? 'Bonne nuit' : h < 18 ? 'Bonjour' : 'Bonsoir';
-    const [hits, fr, gl, au, rap, pop, dance] = await Promise.allSettled([
+    const [hits, fr, gl, au, rap, pop, elec, artists, dub, house] = await Promise.allSettled([
       api.hits(), api.topFrance(), api.topGlobal(), api.auTrending('', 30),
-      api.dzChart(116, 20), api.dzChart(132, 20), api.dzChart(113, 20)
+      api.dzChart(116, 20), api.dzChart(132, 20), api.dzChart(106, 20),
+      api.electroArtists(12), api.auTrending('Dubstep', 20), api.auTrending('House', 20)
     ]);
     const v = (r) => (r.status === 'fulfilled' ? r.value : []);
     const recs = store.s.recs;
@@ -274,21 +281,44 @@ const VIEWS = {
         more: 'recs'
       }));
     }
+    out.push(artistShelf('Artistes électro', v(artists), { sub: 'Skrillex, David Guetta, Daft Punk…', more: 'electro' }));
     out.push(shelf('Écoutés récemment', recent));
     out.push(shelf('Hits du moment', v(hits), { more: 'chart:hits' }));
     out.push(shelf('Top France', v(fr), { more: 'chart:france' }));
     out.push(shelf('Top Global', v(gl), { more: 'chart:global' }));
     out.push(shelf('Tendances · titres complets', v(au), { sub: 'Écoute intégrale, sans pub', more: 'chart:audius' }));
-    out.push(shelf('Rap / Hip-Hop', v(rap), { more: 'chart:genre:116' }));
-    out.push(shelf('Pop', v(pop), { more: 'chart:genre:132' }));
-    out.push(shelf('Dance', v(dance), { more: 'chart:genre:113' }));
+    out.push(shelf('Électro', v(elec), { sub: 'Extraits de 30 s', more: 'chart:genre:106' }));
+    out.push(shelf('Dubstep · titres complets', v(dub), { sub: 'Artistes indépendants, écoute intégrale', more: 'chart:au:Dubstep' }));
+    out.push(shelf('House · titres complets', v(house), { sub: 'Artistes indépendants, écoute intégrale', more: 'chart:au:House' }));
+    out.push(shelf('Rap / Hip-Hop', v(rap), { sub: 'Extraits de 30 s', more: 'chart:genre:116' }));
+    out.push(shelf('Pop', v(pop), { sub: 'Extraits de 30 s', more: 'chart:genre:132' }));
     if (out.length <= 2 && ![hits, fr, gl, au].some((r) => r.status === 'fulfilled')) {
       return `<h1>${hello}</h1><div class="notice">Impossible de charger la musique. Vérifie ta connexion internet.</div><div class="actions"><button class="btn pri" data-act="retry">Réessayer</button></div>`;
     }
     return out.join('');
   },
 
+  async electro() {
+    const res = await Promise.allSettled([
+      api.electroArtists(24), api.dzChart(106, 30), api.dzChart(113, 30),
+      ...api.AU_ELECTRO.map((g) => api.auTrending(g, 20))
+    ]);
+    const v = (r) => (r.status === 'fulfilled' ? r.value : []);
+    const [artists, elec, dance, ...au] = res;
+    const out = [`<h1>Électro</h1><div class="notice">Les artistes connus (Skrillex, David Guetta, Daft Punk…) sont disponibles en <b>extraits de 30 s</b>. Les titres marqués « Titre complet » viennent d'artistes indépendants et s'écoutent en entier.</div>`];
+    out.push(artistShelf('Artistes', v(artists), { wrap: true }));
+    out.push(shelf('Top Électro', v(elec), { sub: 'Extraits de 30 s', more: 'chart:genre:106' }));
+    out.push(shelf('Dance', v(dance), { sub: 'Extraits de 30 s', more: 'chart:genre:113' }));
+    api.AU_ELECTRO.forEach((g, i) => out.push(shelf(`${g} · titres complets`, v(au[i]), { sub: 'Écoute intégrale', more: `chart:au:${g}` })));
+    return out.join('');
+  },
+
   async chart(arg) {
+    if (arg && arg.startsWith('au:')) {
+      const g = arg.slice(3);
+      const tracks = await api.auTrending(g, 50);
+      return trackPage({ kind: 'Classement', title: `${g} · titres complets`, sub: 'Artistes indépendants (Audius), écoute intégrale', cover: tracks[0] && (tracks[0].coverBig || tracks[0].cover), tracks });
+    }
     if (arg && arg.startsWith('genre:')) {
       const id = Number(arg.slice(6));
       const g = api.DZ_GENRES.find((x) => x.id === id) || { name: 'Genre' };
@@ -632,11 +662,11 @@ function drawSpectrum() {
   const W = spec.width, H = spec.height, dpr = window.devicePixelRatio || 1;
   sctx.clearRect(0, 0, W, H);
   // zones
-  const cols = ['rgba(139,92,246,.10)', 'rgba(34,211,238,.07)', 'rgba(139,92,246,.10)', 'rgba(34,211,238,.07)'];
+  const cols = ['rgba(31,212,95,.13)', 'rgba(255,255,255,.04)', 'rgba(31,212,95,.13)', 'rgba(255,255,255,.04)'];
   BANDS.forEach((b, i) => {
     const x1 = xOf(b.from, W), x2 = xOf(b.to, W);
     sctx.fillStyle = cols[i]; sctx.fillRect(x1, 0, x2 - x1, H);
-    sctx.fillStyle = 'rgba(255,255,255,.45)';
+    sctx.fillStyle = 'rgba(255,255,255,.75)';
     sctx.font = `${10 * dpr}px system-ui, sans-serif`;
     sctx.fillText(b.name, x1 + 5 * dpr, 13 * dpr);
   });
@@ -645,7 +675,7 @@ function drawSpectrum() {
   if (!sp) return;
   const { data, binHz } = sp;
   const grad = sctx.createLinearGradient(0, 0, W, 0);
-  grad.addColorStop(0, '#8b5cf6'); grad.addColorStop(1, '#22d3ee');
+  grad.addColorStop(0, '#17a84b'); grad.addColorStop(1, '#7dffa8');
   sctx.beginPath();
   sctx.moveTo(0, H);
   const step = 2 * dpr;

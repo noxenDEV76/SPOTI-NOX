@@ -23,7 +23,7 @@ function createWindow() {
     height: 920,
     minWidth: 900,
     minHeight: 600,
-    backgroundColor: '#0a0a10',
+    backgroundColor: '#000000',
     title: 'SPOTI NOX',
     autoHideMenuBar: true,
     webPreferences: {

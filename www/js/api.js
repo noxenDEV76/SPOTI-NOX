@@ -92,6 +92,27 @@ export async function auTrending(genre = '', limit = 30, time = 'week') {
   return (d.data || []).filter(playable).map(auTrack);
 }
 
+// ---------- Artistes electro connus (recherche Deezer) ----------
+export const ELECTRO_ARTISTS = [
+  'Skrillex', 'David Guetta', 'Calvin Harris', 'Martin Garrix', 'Avicii', 'Daft Punk', 'deadmau5', 'Marshmello',
+  'Kygo', 'Zedd', 'Tiësto', 'Alan Walker', 'Illenium', 'Porter Robinson', 'Fred again..', 'Swedish House Mafia',
+  'Diplo', 'Flume', 'Disclosure', 'Justice', 'The Chainsmokers', 'Kaskade', 'Excision', 'Rezz'
+];
+export const AU_ELECTRO = ['Dubstep', 'House', 'Drum & Bass', 'Trap', 'Future Bass', 'Techno'];
+const norm = (x) => x.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
+
+export async function dzArtistByName(name) {
+  const d = await j(`${DZ}/search/artist?q=${encodeURIComponent(name)}&limit=5`, 24 * 3600 * 1000);
+  const list = d.data || [];
+  const a = list.find((x) => norm(x.name) === norm(name)) || list[0];
+  return a ? { id: 'dz:' + a.id, src: 'deezer', name: a.name, pic: a.picture_medium || a.picture, fans: a.nb_fan } : null;
+}
+export async function electroArtists(n = 12) {
+  const r = await Promise.allSettled(ELECTRO_ARTISTS.slice(0, n).map(dzArtistByName));
+  const seen = new Set();
+  return r.filter((x) => x.status === 'fulfilled' && x.value).map((x) => x.value).filter((a) => !seen.has(a.id) && seen.add(a.id));
+}
+
 // ---------- Jamendo (optionnel) ----------
 export async function jmSearch(q, limit = 20) {
   const key = store.s.settings.jamendo;
