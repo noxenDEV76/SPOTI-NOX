@@ -99,7 +99,7 @@ export const ELECTRO_ARTISTS = [
   'Diplo', 'Flume', 'Disclosure', 'Justice', 'The Chainsmokers', 'Kaskade', 'Excision', 'Rezz'
 ];
 export const AU_ELECTRO = ['Dubstep', 'House', 'Drum & Bass', 'Trap', 'Future Bass', 'Techno'];
-const norm = (x) => x.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
+const norm = (x) => String(x || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
 
 export async function dzArtistByName(name) {
   const d = await j(`${DZ}/search/artist?q=${encodeURIComponent(name)}&limit=5`, 24 * 3600 * 1000);
@@ -146,7 +146,37 @@ export async function search(q) {
 }
 
 // ---------- Lecture ----------
+// Retrouve un titre (venu d'un export Spotify) : Audius en priorite (titre complet si l'artiste y est), sinon Deezer
+export async function matchTrack(title, artist) {
+  const t0 = title.replace(/\s*[([][^)\]]*[)\]]/g, '').replace(/\s+-\s+.*$/, '').trim() || title;
+  const a0 = artist.split(/[;,&]|\bfeat\.|\bft\./i)[0].trim();
+  try {
+    const d = await j(`${AU}/tracks/search?query=${encodeURIComponent(a0 + ' ' + t0)}&limit=5&app_name=${APP_NAME}`, 600000);
+    const hit = (d.data || []).filter(playable).find((x) => x.user && norm(x.user.name) === norm(a0)
+      && (norm(x.title).includes(norm(t0)) || norm(t0).includes(norm(x.title))));
+    if (hit) return auTrack(hit);
+  } catch (e) { /* on passe a Deezer */ }
+  const q1 = `artist:"${a0.replace(/"/g, '')}" track:"${t0.replace(/"/g, '')}"`;
+  for (const q of [q1, `${a0} ${t0}`]) {
+    try {
+      const d = await j(`${DZ}/search?q=${encodeURIComponent(q)}&limit=5`, 600000);
+      const list = d.data || [];
+      const best = list.find((x) => norm(x.artist && x.artist.name) === norm(a0)) || list[0];
+      if (best) return dzTrack(best);
+    } catch (e) { /* essai suivant */ }
+  }
+  return null;
+}
+
 export async function resolve(t) {
+  if (t.src === 'pending') {
+    const m = await matchTrack(t.title, t.artist);
+    if (!m) { t.src = 'missing'; store.save(); throw new Error('Introuvable'); }
+    Object.assign(t, m);
+    store.save();
+    return t;
+  }
+  if (t.src === 'missing') throw new Error('Introuvable');
   if (t.src === 'deezer' && !t.url) {
     const d = await j(`${DZ}/track/${t.id.slice(3)}`, 60000);
     t.url = d.preview || '';

@@ -4,7 +4,8 @@ import { store } from './store.js';
 import { Player } from './player.js';
 import { BANDS } from './analyzer.js';
 import { icon } from './icons.js';
-import { recordListen, refreshRecs, scheduleRecs, REFRESH_MS } from './recs.js';
+import { recordListen, refreshRecs, scheduleRecs, seedArtist, REFRESH_MS } from './recs.js';
+import { importFiles } from './importer.js';
 
 // ---------- utilitaires ----------
 const $ = (s, r = document) => r.querySelector(s);
@@ -103,6 +104,28 @@ function pickPlaylist(track) {
   };
 }
 
+function openSpotifyImport() {
+  const m = openModal(`<h2>Importer depuis Spotify</h2>
+    <p>SPOTI NOX ne se connecte pas à ton compte : tu lui donnes un export de tes playlists, et il retrouve chaque titre tout seul (extrait de 30 s, ou titre complet quand l'artiste est sur Audius).</p>
+    <p><b>Option officielle</b> : sur spotify.com/account/privacy, demande tes « Données du compte ». Spotify t'envoie un zip par mail (ça peut prendre quelques jours). Choisis ensuite les fichiers <b>Playlist1.json</b> (et suivants) et <b>YourLibrary.json</b>.</p>
+    <p><b>Plus rapide</b> : un outil comme Exportify exporte tes playlists en fichiers <b>.csv</b>.</p>
+    <input type="file" id="sp-files" accept=".json,.csv,text/csv,application/json" multiple>
+    <div class="btns2" style="margin-top:14px"><button class="btn" data-x="no">Fermer</button><button class="btn pri" data-x="go">Importer</button></div>`);
+  m.onclick = async (e) => {
+    const x = e.target.closest('[data-x]');
+    if (!x) return;
+    if (x.dataset.x !== 'go') { closeModal(); return; }
+    const files = [...$('#sp-files', m).files];
+    if (!files.length) { toast('Choisis au moins un fichier'); return; }
+    try {
+      const r = await importFiles(files);
+      closeModal();
+      toast(r.playlists ? `${r.playlists} playlist(s) importée(s), ${r.tracks} titres` : 'Aucune playlist trouvée dans ces fichiers');
+      go('library', null, cur.name !== 'library');
+    } catch (err) { toast('Fichier illisible'); }
+  };
+}
+
 function openQueue() {
   const rows = player.order.map((qi, p) => ({ t: player.queue[qi], qi, p }));
   const m = openModal(`<h2>File d'attente</h2>${rows.length ? rows.map(({ t, qi, p }) => `<div class="qrow ${p === player.pos ? 'cur' : ''}" data-qi="${qi}"><small>${p + 1}</small><span>${esc(t.title)} — ${esc(t.artist)}</span><small>${t.full ? fmtT(t.duration) : '0:30'}</small></div>`).join('') : '<p>La file est vide.</p>'}<div class="btns2"><button class="btn" data-x="no">Fermer</button></div>`);
@@ -182,11 +205,15 @@ function artistShelf(title, artists, { sub = '', more = '', wrap = false } = {})
 
 function rowHTML(t, key, i, opts = {}) {
   const liked = store.isLiked(t.id);
+  const badge = t.src === 'pending' ? '<span class="badge">À retrouver…</span>'
+    : t.src === 'missing' ? '<span class="badge">Introuvable</span>'
+      : `<span class="badge ${t.full ? 'full' : ''}">${t.full ? 'Titre complet' : 'Extrait 30 s'}</span>`;
+  const dur = t.src === 'pending' || t.src === 'missing' ? (t.duration ? fmtT(t.duration) : '—') : (t.full ? fmtT(t.duration) : '0:30');
   return `<div class="trow ${player.current && player.current.id === t.id ? 'cur' : ''}" data-act="play" data-list="${key}" data-i="${i}" data-id="${esc(t.id)}">
     <div class="n"><span class="num">${i + 1}</span><span class="pl">${icon('play', 20)}</span></div>
     <div class="tc"><div class="th" style="${bg(t.cover)}"></div><div class="tt"><b>${esc(t.title)}</b><span>${artistLink(t)}</span></div></div>
-    <span class="badge ${t.full ? 'full' : ''}">${t.full ? 'Titre complet' : 'Extrait 30 s'}</span>
-    <div class="tm">${t.full ? fmtT(t.duration) : '0:30'}</div>
+    ${badge}
+    <div class="tm">${dur}</div>
     <div class="ra">
       <button class="mini ${liked ? 'liked-on' : ''}" data-act="like" data-id="${esc(t.id)}" title="J'aime">${icon(liked ? 'heartfill' : 'heart', 18)}</button>
       <button class="mini" data-act="addpl" data-id="${esc(t.id)}" title="Ajouter à une playlist">${icon('plus', 18)}</button>
@@ -364,6 +391,7 @@ const VIEWS = {
     const cards = [
       `<div class="card" data-nav="likes"><div class="cov" style="background:var(--grad);display:grid;place-items:center;color:#fff">${icon('heartfill', 56)}</div><b>Titres likés</b><span>${likes.length} titres</span></div>`,
       ...pls.map((p) => `<div class="card" data-nav="playlist:${p.id}"><div class="cov" style="${bg(p.tracks[0] && p.tracks[0].cover)}"></div><b>${esc(p.name)}</b><span>${p.tracks.length} titres</span></div>`),
+      `<div class="card" data-act="import-sp"><div class="cov" style="display:grid;place-items:center;color:var(--ac)">${icon('download', 56)}</div><b>Importer de Spotify</b><span>Tes playlists, en quelques clics</span></div>`,
       `<div class="card" data-act="new-pl"><div class="cov" style="display:grid;place-items:center;color:var(--mu)">${icon('plus', 56)}</div><b>Nouvelle playlist</b><span>Crée la tienne</span></div>`
     ];
     const hist = [];
@@ -405,6 +433,30 @@ const VIEWS = {
   }
 };
 
+// ---------- titres importes : retrouves au fur et a mesure ----------
+let resolving = false;
+async function kickResolve() {
+  if (resolving || cur.name !== 'playlist') return;
+  const p = store.s.playlists.find((x) => x.id === cur.arg);
+  if (!p) return;
+  const pend = p.tracks.filter((t) => t.src === 'pending');
+  if (!pend.length) return;
+  resolving = true;
+  let ok = 0;
+  let n = 0;
+  try {
+    for (const t of pend) {
+      if (cur.name !== 'playlist' || cur.arg !== p.id) break;
+      try { await api.resolve(t); ok++; seedArtist(t); } catch (e) { /* introuvable */ }
+      n++;
+      await new Promise((r) => setTimeout(r, 250));
+      if (n % 10 === 0 && cur.name === 'playlist' && cur.arg === p.id) render();
+    }
+  } finally { resolving = false; }
+  if (ok >= 10) { try { await refreshRecs(); } catch (e) { /* ignore */ } }
+  if (cur.name === 'playlist' && cur.arg === p.id) render();
+}
+
 // ---------- navigation ----------
 const hist = [];
 let cur = { name: 'home', arg: null };
@@ -438,6 +490,7 @@ async function render(scrollTop = false) {
     view.innerHTML = html;
     view.scrollTop = scrollTop ? 0 : keep;
     if (cur.name === 'search') $('#q').value = cur.arg || '';
+    if (cur.name === 'playlist') kickResolve();
   } catch (e) {
     if (token !== renderToken) return;
     view.innerHTML = `<div class="notice">Impossible de charger cette page (${esc(e.message || 'erreur réseau')}).</div><div class="actions"><button class="btn pri" data-act="retry">Réessayer</button></div>`;
@@ -504,6 +557,7 @@ const ACTIONS = {
   async 'new-pl'() { const n = await askText('Nouvelle playlist', '', 'Créer'); if (n !== null) { const p = store.createPlaylist(n); go('playlist', p.id); } },
   async 'rename-pl'(el) { const p = store.s.playlists.find((x) => x.id === el.dataset.pid); if (!p) return; const n = await askText('Renommer la playlist', p.name, 'Renommer'); if (n && n.trim()) { p.name = n.trim(); store.save(); render(); } },
   'delete-pl'(el) { const p = store.s.playlists.find((x) => x.id === el.dataset.pid); if (p && confirm(`Supprimer « ${p.name} » ?`)) { store.s.playlists = store.s.playlists.filter((x) => x.id !== p.id); store.save(); go('library', null, false); } },
+  'import-sp'() { openSpotifyImport(); },
   retry() { render(true); },
   async 'refresh-recs'() { toast('Calcul de tes recommandations…'); try { await refreshRecs(); toast('Recommandations actualisées'); } catch (e) { toast('Échec : réessaie dans un instant'); } render(); }
 };

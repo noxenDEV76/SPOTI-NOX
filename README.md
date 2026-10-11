@@ -8,6 +8,7 @@ Ton lecteur de musique perso : sans compte, sans pub, pour **PC (Windows .exe)**
 - **Playlists** (illimitées, lecture aléatoire possible), **titres likés**, historique, export/import de sauvegarde
 - **Classements** : Hits du moment, Top France, Top Global, tops par genre (Rap, Pop, Dance, Rock, R&B, Électro)
 - **Électro** : page dédiée avec les artistes connus (Skrillex, David Guetta, Daft Punk…) et des rangées de titres complets (Dubstep, House, Drum & Bass, Trap…)
+- **Import Spotify** : Bibliothèque → « Importer de Spotify ». Tu choisis l'export officiel de tes données (Playlist1.json, YourLibrary.json) ou des CSV (Exportify) ; chaque titre est retrouvé automatiquement sur Audius ou Deezer, et « Pour toi » démarre déjà à ton goût
 - **Pour toi** : recommandations calculées d'après ce que tu écoutes, **recalculées toutes les 2 h**
 - **Fiche artiste** : photo, pays, fans / abonnés, auditeurs et écoutes (Last.fm), liens réseaux sociaux
 - **Analyse en direct** pendant l'écoute, dans le panneau de droite :

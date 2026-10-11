@@ -8,7 +8,7 @@
   "private": true,
   "scripts": {
     "start": "electron .",
-    "test": "node test/dsp.test.mjs",
+    "test": "node test/dsp.test.mjs && node test/import.test.mjs",
     "dist:win": "electron-builder --win --publish never",
     "android:add": "cap add android",
     "android:sync": "cap sync android"

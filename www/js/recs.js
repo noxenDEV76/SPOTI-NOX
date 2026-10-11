@@ -29,6 +29,16 @@ export function recordListen(t) {
   store.save();
 }
 
+// Un titre importe (retrouve) compte un peu dans ton profil : "Pour toi" demarre deja a ton gout
+export function seedArtist(t) {
+  if (!t.artistId) return;
+  const a = store.s.profile.artists[t.artistId] || { id: t.artistId, name: t.artist, src: t.src, w: 0 };
+  a.w = Math.min(a.w + 0.5, 6);
+  a.name = t.artist;
+  store.s.profile.artists[t.artistId] = a;
+  store.save();
+}
+
 function decayProfile() {
   const a = store.s.profile.artists;
   for (const k of Object.keys(a)) {
