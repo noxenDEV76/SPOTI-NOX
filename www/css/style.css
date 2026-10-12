@@ -333,3 +333,51 @@ body { font-size: 15px; }
 .dlg select:focus { border-color: var(--ac); }
 .dlg input[type=range] { width: 100%; display: block; margin: 8px 0 14px; flex: none; }
 .dlg label b { color: var(--ac2); margin-left: 6px; text-transform: none; letter-spacing: 0; }
+
+/* ---------- ecran Audio ---------- */
+.au-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; margin: 14px 0 28px; }
+.au-card { background: var(--s2); border-radius: 12px; padding: 14px 16px; min-width: 0; }
+.au-card.au-wide { grid-column: 1 / -1; }
+.au-card h3 { margin: 0 0 10px; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: var(--mu); }
+.au-card label { display: block; margin: 8px 0; color: var(--mu); }
+.au-card label.chk { display: flex; align-items: center; gap: 8px; color: var(--tx); }
+.au-card label b { color: var(--ac2); float: right; font-variant-numeric: tabular-nums; }
+.au-card input[type=range] { width: 100%; display: block; margin-top: 8px; }
+.au-card select, .au-card input[type=number] { background: var(--s1); color: var(--tx); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; max-width: 100%; }
+.au-card input[type=number] { width: 84px; }
+.au-card input:disabled, .au-card select:disabled { opacity: .4; }
+.au-card .btn { padding: 8px 16px; font-size: 13px; }
+.au-card .btn:disabled { opacity: .4; cursor: default; }
+.au-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 8px 0; }
+.au-flow { color: var(--mu); margin-bottom: 8px; }
+.au-flow b { color: var(--ac2); }
+.au-seg { display: flex; gap: 4px; background: var(--s1); border-radius: 999px; padding: 3px; margin: 6px 0 10px; }
+.au-seg button { flex: 1; padding: 7px 10px; border-radius: 999px; font-weight: 600; color: var(--mu); font-size: 13px; }
+.au-seg button.on { background: var(--ac); color: #000; }
+.au-targets label { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 4px 0; }
+.au-kv { margin: 8px 0; }
+.au-kv-r, .au-kv > span { display: flex; justify-content: space-between; gap: 10px; padding: 3px 0; border-bottom: 1px solid var(--line); }
+.au-kv-r b, .au-kv > b { font-variant-numeric: tabular-nums; }
+.au-kv-r b.ok { color: var(--ok); } .au-kv-r b.warn { color: var(--warn); } .au-kv-r b.bad { color: var(--bad); }
+.au-card .hint { color: var(--mu); font-size: 12px; margin: 8px 0 0; }
+#eq-canvas, .au-twocv canvas { width: 100%; display: block; background: var(--s1); border-radius: 10px; touch-action: none; }
+.au-twocv { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.au-regs { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px 14px; margin: 10px 0; }
+.au-reg label { margin: 0; font-size: 12px; }
+.au-reg label small { opacity: .7; }
+.au-reg b { color: var(--ac2); font-size: 12px; }
+.au-tab { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 13px; }
+.au-tab th { text-align: left; color: var(--mu); font-weight: 600; padding: 4px 6px; }
+.au-tab td { padding: 3px 6px; border-top: 1px solid var(--line); }
+.au-tab.au-meters td:not(:first-child) { font-variant-numeric: tabular-nums; }
+.au-meter { position: relative; height: 18px; background: var(--s1); border-radius: 9px; overflow: hidden; margin: 10px 0; }
+.au-gr { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: var(--warn); transition: width .05s; }
+.au-meter span { position: relative; z-index: 1; padding-left: 8px; font-size: 12px; line-height: 18px; }
+.au-corr { display: flex; align-items: center; gap: 8px; color: var(--mu); font-size: 12px; margin: 10px 0; }
+.au-corrbar { position: relative; flex: 1; height: 8px; background: linear-gradient(90deg, var(--bad), var(--warn) 45%, var(--ok) 70%); border-radius: 4px; }
+.au-corrbar i { position: absolute; top: -4px; width: 4px; height: 16px; background: #fff; border-radius: 2px; left: 50%; margin-left: -2px; }
+details summary { cursor: pointer; color: var(--mu); margin-top: 10px; }
+@media (max-width: 700px) { .au-twocv { grid-template-columns: 1fr; } .au-tab { font-size: 12px; } .au-card input[type=number] { width: 64px; } }
+.au-card label, .au-card .au-targets label { text-transform: none; letter-spacing: 0; font-size: 14px; font-weight: 400; }
+.au-targets label { display: grid; grid-template-columns: 1fr 84px auto; align-items: center; gap: 8px; }
+.au-kv-r span, .au-kv > span { color: var(--mu); }

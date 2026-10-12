@@ -39,7 +39,23 @@ Pour les artistes connus (Deezer = 30 s), SPOTI NOX peut jouer la version compl�
 
 ## Son, égaliseur et langue
 
-- **Réglages → Son : égaliseur** : préréglage « Équilibré » par défaut (graves pleins et rebondissants, bas-médiums ≈ 320 Hz dégagés contre l'effet « muddy », aigus brillants) + Neutre, Bass boost, Brillant, ou curseurs perso. Un limiteur évite la saturation, et le loudness / True Peak affichés sont ceux que tu entends. L'égaliseur agit sur les titres qui passent par l'analyse (PC : tout sauf YouTube ; Android : Audius et Jamendo).
+- **Écran « Audio »** (menu de gauche) : moteur de traitement en virgule flottante 32 bits, tous les contrôles agissent réellement sur le son et toutes les mesures viennent du signal.
+
+  ```
+  Source → EQ paramétrique (9 bandes) → Stéréo (largeur / balance / mono)
+         → Normalisation (gain BS.1770) → Limiteur true-peak à anticipation → Sortie
+                   └── analyseurs (entrée / sortie) : forme d'onde, spectre, LUFS, true-peak, corrélation, GR
+  ```
+
+  - **Égaliseur** : courbe graphique (glisser les points, molette = Q), tableau détaillé, 7 régions (Sub-bass → Air). Préréglages : Flat (défaut, signal inchangé), Bass Boost, Bass Reduction, Vocal Clarity, Treble Reduction, Bright, Warm, Electronic, Acoustic, + tes propres préréglages. Plafond ±12 dB, filtres stables vérifiés.
+  - **EQ intelligent** (désactivé par défaut) : *Suggestions* (mesure seulement) ou *Adaptatif* (±0,5 à 4 dB, 0,15 dB/s max). Il ne restaure pas les fréquences qu'une source avec pertes n'a plus.
+  - **Normalisation** ITU-R BS.1770 / EBU R128 (K-weighting, gates −70 LUFS / −10 LU) : Normal −14, Quiet −19, Loud −11 LUFS (cibles modifiables), mode album, contournement. Le gain est borné pour que la crête vraie reste sous le plafond. Les Deezer 30 s sont mesurés sur l'extrait ; Audius / Jamendo sur le titre complet (mesure en arrière-plan, mise en cache).
+  - **Limiteur true-peak** : plafond −1 dBTP par défaut, anticipation 5 ms, détection ×4, indicateur de réduction de gain. Sur du bruit blanc très large bande, l'estimation peut sous-lire de moins de 1 dB (documenté dans les tests) ; sur de la musique le plafond est tenu.
+  - **Stéréo** : largeur, balance, mono, corrélation, Mid/Side. À 100 % / centre le signal est copié à l'identique.
+  - **A/B** : Original / Traité avec égalisation de volume perçu (jamais enregistrée) et boucle de 8 s. **Contournement** global.
+  - **Sortie** : valeurs réelles rapportées par le navigateur (fréquence, latence, canaux), choix du périphérique, retour automatique si débranché.
+  - Réglages versionnés, validés au chargement et à l'import.
+- **Limites honnêtes** : Web Audio ne permet ni le mode exclusif WASAPI, ni de choisir la fréquence de sortie, ni le « bit-perfect » ; pas de crossfade / gapless pour l'instant ; les titres lus sans analyse (extraits Deezer sur Android, YouTube) ne passent pas par le moteur ; les extraits Deezer restent des MP3 de 30 s.
 - **Réglages → Langue** : automatique, Français ou English (l'app se recharge).
 - Les icônes viennent de `scripts/make-icons.py` (`python3 scripts/make-icons.py` pour les régénérer).
 
@@ -66,7 +82,9 @@ Pour les artistes connus (Deezer = 30 s), SPOTI NOX peut jouer la version compl�
 ```bash
 npm install
 npm start        # ouvre l'app PC
-npm test         # vérifie le calcul LUFS / True Peak sur des signaux de référence
+npm test              # DSP (EQ, LUFS, limiteur, stéréo), réglages, import, serveur, langues
+npm run test:browser  # moteur audio réel dans Chromium (Playwright)
+npm run test:e2e      # app complète dans Chromium : lecture, écran Audio, persistance
 ```
 
 ## Limites à connaître

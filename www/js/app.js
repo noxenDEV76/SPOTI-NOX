@@ -2,7 +2,8 @@
 import * as api from './api.js';
 import { store } from './store.js';
 import { Player } from './player.js';
-import { BANDS, EQ_PRESETS } from './analyzer.js';
+import { BANDS } from './analyzer.js';
+import { initAudioUI, audioHTML, mountAudioView, unmountAudioView, tickAudioView } from './audio-ui.js';
 import { initLang, tr, locale, LANGS } from './i18n.js';
 import { icon } from './icons.js';
 import { recordListen, refreshRecs, scheduleRecs, seedArtist, REFRESH_MS } from './recs.js';
@@ -63,7 +64,8 @@ function regList(tracks) {
 
 // ---------- lecteur ----------
 const player = new Player($('#audio-a'), $('#audio-p'), $('#yt-box .yt-slot'));
-player.analyzer.setEQ(store.s.settings.eq);
+store.s.settings.audio = player.analyzer.setAudio(store.s.settings.audio);
+initAudioUI({ engine: player.analyzer, player, store, esc, toast, askText, confirm: (m) => window.confirm(m) });
 window.__nox = { player, store, api }; // pratique pour le debug
 
 // ---------- modales ----------
@@ -140,7 +142,6 @@ function openQueue() {
 
 function openSettings() {
   const s = store.s.settings;
-  const eq = Object.assign({ on: true, preset: 'bounce', bass: 4.5, mud: -3.5, bright: 4 }, s.eq || {});
   const m = openModal(`<h2>Réglages</h2>
     <label>Clé Last.fm (facultative)</label>
     <input type="password" id="set-lfm" value="${esc(s.lastfm)}" placeholder="Pour afficher auditeurs et écoutes des artistes">
@@ -151,20 +152,8 @@ function openSettings() {
     <label class="chk"><input type="checkbox" id="set-ytauto" ${s.ytAuto !== false ? 'checked' : ''}> Jouer automatiquement la version YouTube quand je n'ai qu'un extrait de 30 s</label>
     <label>Langue</label>
     <select id="set-lang"><option value="auto" ${!s.lang || s.lang === 'auto' ? 'selected' : ''}>Automatique (langue de l'appareil)</option>${Object.entries(LANGS).map(([c, l]) => `<option value="${c}" ${s.lang === c ? 'selected' : ''}>${l.name}</option>`).join('')}</select>
-    <label>Son : égaliseur</label>
-    <label class="chk"><input type="checkbox" id="eq-on" ${eq.on !== false ? 'checked' : ''}> Activer l'égaliseur</label>
-    <label>Préréglage</label>
-    <select id="eq-preset">
-      <option value="bounce" ${eq.preset === 'bounce' ? 'selected' : ''}>Équilibré · lows bouncy + brillance</option>
-      <option value="flat" ${eq.preset === 'flat' ? 'selected' : ''}>Neutre (sans traitement)</option>
-      <option value="bass" ${eq.preset === 'bass' ? 'selected' : ''}>Bass boost</option>
-      <option value="bright" ${eq.preset === 'bright' ? 'selected' : ''}>Brillant</option>
-      <option value="custom" ${eq.preset === 'custom' ? 'selected' : ''}>Personnalisé</option>
-    </select>
-    <label>Graves (Low) <b id="eq-bass-v"></b></label><input type="range" id="eq-bass" min="-8" max="10" step="0.5" value="${eq.bass}">
-    <label>Nettoyage des bas-médiums (≈ 320 Hz) <b id="eq-mud-v"></b></label><input type="range" id="eq-mud" min="-10" max="3" step="0.5" value="${eq.mud}">
-    <label>Brillance (aigus) <b id="eq-bright-v"></b></label><input type="range" id="eq-bright" min="-6" max="10" step="0.5" value="${eq.bright}">
-    <p>S'applique aux titres passant par l'analyse (PC : tout sauf YouTube ; Android : Audius et Jamendo). Un limiteur évite la saturation. Le niveau mesuré à droite est celui que tu entends.</p>
+    <label>Son</label>
+    <div class="btns2" style="margin:0 0 10px"><button class="btn" data-x="audio">Ouvrir le moteur audio (égaliseur, normalisation, limiteur…)</button></div>
     <label class="chk"><input type="checkbox" id="set-reset" ${s.resetOnTrack ? 'checked' : ''}> Remettre le loudness à zéro à chaque nouveau titre</label>
     <label>Mes artistes préférés (séparés par des virgules)</label>
     <textarea id="set-fav" rows="3" placeholder="PhatCap!, Wiz Khalifa, Skrillex…"></textarea>
@@ -177,22 +166,11 @@ function openSettings() {
     </div>
     <div class="btns2"><button class="btn" data-x="no">Annuler</button><button class="btn pri" data-x="save">Enregistrer</button></div>
     <input type="file" id="imp-file" accept="application/json" class="hidden">`);
-  // egaliseur : applique en direct, sans attendre « Enregistrer »
-  const eqNow = () => ({ on: $('#eq-on', m).checked, preset: $('#eq-preset', m).value, bass: Number($('#eq-bass', m).value), mud: Number($('#eq-mud', m).value), bright: Number($('#eq-bright', m).value) });
-  const eqShow = () => ['bass', 'mud', 'bright'].forEach((k) => { const r = $('#eq-' + k, m); const v = Number(r.value); $('#eq-' + k + '-v', m).textContent = (v > 0 ? '+' : '') + v + ' dB'; r.style.setProperty('--p', ((v - r.min) / (r.max - r.min) * 100) + '%'); });
-  const eqApply = () => { s.eq = eqNow(); player.analyzer.setEQ(s.eq); store.save(); eqShow(); };
-  eqShow();
-  $('#eq-on', m).onchange = eqApply;
-  $('#eq-preset', m).onchange = () => {
-    const p = EQ_PRESETS[$('#eq-preset', m).value];
-    if (p) { $('#eq-bass', m).value = p.bass; $('#eq-mud', m).value = p.mud; $('#eq-bright', m).value = p.bright; }
-    eqApply();
-  };
-  ['bass', 'mud', 'bright'].forEach((k) => { $('#eq-' + k, m).oninput = () => { $('#eq-preset', m).value = 'custom'; eqApply(); }; });
   m.onclick = async (e) => {
     const x = e.target.closest('[data-x]');
     if (!x) return;
     const k = x.dataset.x;
+    if (k === 'audio') { closeModal(); go('audio'); return; }
     if (k === 'save') {
       const newLang = $('#set-lang', m).value;
       const langChanged = (s.lang || 'auto') !== newLang;
@@ -349,6 +327,7 @@ const CHARTS = {
 };
 
 const VIEWS = {
+  audio: () => audioHTML(),
   async home() {
     const h = new Date().getHours();
     const hello = h < 6 ? 'Bonne nuit' : h < 18 ? 'Bonjour' : 'Bonsoir';
@@ -543,6 +522,7 @@ function go(name, arg = null, push = true) {
 async function render(scrollTop = false) {
   const token = ++renderToken;
   const view = $('#view');
+  unmountAudioView();
   if (scrollTop) view.scrollTop = 0;
   const keep = view.scrollTop;
   if (scrollTop || !view.firstChild) view.innerHTML = '<div class="loading">Chargement…</div>';
@@ -553,6 +533,7 @@ async function render(scrollTop = false) {
     view.scrollTop = scrollTop ? 0 : keep;
     if (cur.name === 'search') $('#q').value = cur.arg || '';
     if (cur.name === 'playlist') kickResolve();
+    if (cur.name === 'audio') mountAudioView(view);
   } catch (e) {
     if (token !== renderToken) return;
     view.innerHTML = `<div class="notice">Impossible de charger cette page (${esc(e.message || 'erreur réseau')}).</div><div class="actions"><button class="btn pri" data-act="retry">Réessayer</button></div>`;
@@ -874,9 +855,12 @@ function updateMeters() {
 
 function panelVisible() { return window.innerWidth >= 1000 || document.body.classList.contains('panel-open'); }
 
+let lastAu = 0;
 function loop(ts) {
   requestAnimationFrame(loop);
-  if (document.hidden || !panelVisible()) return;
+  if (document.hidden) return;
+  if (cur.name === 'audio' && ts - lastAu > 66) { tickAudioView((ts - lastAu) / 1000); lastAu = ts; }
+  if (!panelVisible()) return;
   drawSpectrum();
   if (ts - lastSlow > 50) { lastSlow = ts; updateMeters(); }
 }

@@ -21,6 +21,8 @@ export class Player {
     this.elP = elP;
     this.el = elA;
     this.analyzer = new Analyzer(elA);
+    this.analyzer.cache = store.s.loudCache;            // mesures de loudness conservees entre les lancements
+    this.analyzer.onCache = () => store.save();
     this.queue = [];
     this.order = [];
     this.pos = -1;
@@ -202,10 +204,23 @@ export class Player {
     this.analyzable = false;
     this.analyzer.active = false;
     this.emit('yt', true);
+    this.afterSource(track, null);
     this.emit('analysis', false);
     this.yt.play();
     this.emit('state');
     return true;
+  }
+
+  // Informe le moteur audio du titre courant : normalisation (mesure du loudness) et mode album
+  afterSource(track, loader) {
+    const a = this.analyzer;
+    a.albumKeys = this.queue.map((t) => a.constructor.keyOf(t));
+    a.setTrack(track);
+    if (a.active && a.audio.norm.mode !== 'off' && !a.cache[a.trackKey]) {
+      // titres complets (Audius, Jamendo) : on telecharge le fichier en arriere-plan pour le mesurer
+      const get = loader || (track.full && track.url && !isNative() ? async () => { const r = await fetch(track.url); if (!r.ok) throw new Error('HTTP ' + r.status); return r.arrayBuffer(); } : null);
+      if (get) a.measureTrack(track, get); else a.refreshPlan();
+    }
   }
 
   // Erreur du lecteur YouTube (video non integrable, supprimee...) : on retombe sur l'extrait
@@ -249,6 +264,7 @@ export class Player {
     let el = this.elA;
     let src = track.url;
     let analyzable = true;
+    let loader = null;
     if (forcePlain) { el = this.elP; analyzable = false; }
     else if (track.src === 'deezer') {
       if (isNative()) { el = this.elP; analyzable = false; }
@@ -256,8 +272,10 @@ export class Player {
         try {
           const r = await fetch(track.url);
           if (!r.ok) throw new Error('HTTP ' + r.status);
+          const bytes = await r.arrayBuffer();
           if (seq !== this.seq) return;
-          src = URL.createObjectURL(await r.blob());
+          src = URL.createObjectURL(new Blob([bytes], { type: r.headers.get('content-type') || 'audio/mpeg' }));
+          loader = async () => bytes;          // deja telecharge : sert aussi a la mesure du loudness
         } catch (e) { el = this.elP; analyzable = false; }
       }
     }
@@ -278,6 +296,7 @@ export class Player {
       try { await this.analyzer.init(); await this.analyzer.resume(); } catch (e) { this.analyzer.error = e; }
     }
     if (store.s.settings.resetOnTrack) this.analyzer.resetMeters();
+    this.afterSource(track, loader);
     this.emit('analysis', this.analyzer.active);
 
     el.src = src;

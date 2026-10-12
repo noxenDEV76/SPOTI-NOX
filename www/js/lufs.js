@@ -12,6 +12,7 @@ export class LufsMeter {
     this.blocks = [];   // energie (L+R) de chaque bloc de 100 ms
     this.windows = [];  // energie de chaque fenetre de 400 ms (pas de 100 ms = 75 % de recouvrement)
     this.tpNow = -Infinity;
+    this.peakNow = -Infinity;
     this.tpMax = -Infinity;
     this.peakMax = -Infinity;
     this.dirty = false;
@@ -33,6 +34,7 @@ export class LufsMeter {
     this.tpNow = toDb(msg.tp);
     if (this.tpNow > this.tpMax) this.tpMax = this.tpNow;
     const pk = toDb(msg.peak);
+    this.peakNow = pk;
     if (pk > this.peakMax) this.peakMax = pk;
   }
 
@@ -73,6 +75,7 @@ export class LufsMeter {
       shortTerm: this.shortTerm,
       integrated: this.integrated,
       truePeak: this.tpNow,
+      peakNow: this.peakNow,
       truePeakMax: this.tpMax,
       peakMax: this.peakMax
     };

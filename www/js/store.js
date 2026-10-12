@@ -1,4 +1,6 @@
 // SPOTI NOX - stockage local (playlists, favoris, historique, profil d'ecoute, reglages)
+import { defaultAudio, validateAudio } from './audio-settings.js';
+
 const KEY = 'spotinox.v1';
 
 const defaults = () => ({
@@ -7,8 +9,9 @@ const defaults = () => ({
   history: [],              // [{ t: track, at: timestamp }]
   profile: { artists: {}, genres: {} },
   recs: { items: [], ts: 0, because: [] },
-  settings: { lastfm: '', jamendo: '', volume: 0.85, resetOnTrack: true, ytKey: '', ytAuto: true, lang: 'auto', eq: { on: true, preset: 'bounce', bass: 4.5, mud: -3.5, bright: 4 } },
-  ytCache: {}               // "artiste|titre" -> id de video YouTube
+  settings: { lastfm: '', jamendo: '', volume: 0.85, resetOnTrack: true, ytKey: '', ytAuto: true, lang: 'auto', audio: defaultAudio() },
+  ytCache: {},              // "artiste|titre" -> id de video YouTube
+  loudCache: {}             // mesures de loudness : cle -> { integrated, truePeakDb, lra, duration... }
 });
 
 let state = defaults();
@@ -18,6 +21,9 @@ try {
   state.settings = Object.assign(defaults().settings, saved.settings || {});
   state.profile = Object.assign(defaults().profile, saved.profile || {});
   state.recs = Object.assign(defaults().recs, saved.recs || {});
+  state.settings.audio = validateAudio(state.settings.audio);
+  delete state.settings.eq;           // ancien egaliseur 3 curseurs (remplace par settings.audio)
+  state.loudCache = (saved.loudCache && typeof saved.loudCache === 'object') ? saved.loudCache : {};
 } catch (e) {
   state = defaults();
 }
@@ -76,6 +82,7 @@ export const store = {
     if (Array.isArray(d.playlists)) state.playlists = d.playlists;
     if (Array.isArray(d.likes)) state.likes = d.likes;
     if (d.settings) Object.assign(state.settings, d.settings);
+    state.settings.audio = validateAudio(state.settings.audio);
     this.save();
   },
   wipe() {

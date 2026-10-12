@@ -8,7 +8,9 @@
   "private": true,
   "scripts": {
     "start": "electron .",
-    "test": "node test/dsp.test.mjs && node test/import.test.mjs && node test/server.test.cjs && node test/eq-i18n.test.mjs",
+    "test:browser": "node test/browser/engine.browser.test.cjs",
+    "test:e2e": "node test/browser/app.e2e.cjs",
+    "test": "node test/dsp.test.mjs && node test/audio-engine.test.mjs && node test/import.test.mjs && node test/server.test.cjs && node test/eq-i18n.test.mjs",
     "dist:win": "electron-builder --win --publish never",
     "android:add": "cap add android",
     "android:sync": "cap sync android"
